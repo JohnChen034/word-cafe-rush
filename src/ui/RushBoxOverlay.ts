@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { getRewardDefinition } from "../game/rewards/RewardCatalog";
 import type { RewardId } from "../game/rewards/RewardTypes";
+import { LAYERS } from "./Layers";
 import { COLORS, FONT } from "./Theme";
 
 type RushBoxOverlayOptions = {
@@ -21,7 +22,7 @@ export class RushBoxOverlay {
     rewardIds: RewardId[],
     options: RushBoxOverlayOptions,
   ) {
-    this.container = scene.add.container(0, 0).setDepth(1000).setAlpha(0);
+    this.container = scene.add.container(0, 0).setDepth(LAYERS.overlay).setAlpha(0);
 
     const quick = options.quick ?? false;
     const backdrop = scene.add.rectangle(480, 320, 960, 640, 0x2b3038, quick ? 0.5 : 0.75);
@@ -157,7 +158,7 @@ export class RushBoxOverlay {
 
   private burst(x: number, y: number): void {
     for (let index = 0; index < 14; index += 1) {
-      const dot = this.scene.add.circle(x, y, Phaser.Math.Between(4, 8), 0xe5a940, 0.9).setDepth(1001);
+      const dot = this.scene.add.circle(x, y, Phaser.Math.Between(4, 8), 0xe5a940, 0.9).setDepth(LAYERS.overlay + 1);
       const angle = (Math.PI * 2 * index) / 14;
       const distance = Phaser.Math.Between(50, 118);
       this.scene.tweens.add({

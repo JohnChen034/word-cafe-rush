@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { punch } from "../juice/TweenPresets";
+import { LAYERS } from "./Layers";
 import { COLORS, FONT } from "./Theme";
 
 export class ComboDisplay {
@@ -15,7 +16,7 @@ export class ComboDisplay {
       color: COLORS.ink,
     }).setOrigin(0.5);
 
-    this.container = scene.add.container(x, y, [plate, this.label]);
+    this.container = scene.add.container(x, y, [plate, this.label]).setDepth(LAYERS.hud);
   }
 
   setCombo(combo: number): void {

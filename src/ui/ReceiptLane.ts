@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { LAYERS } from "./Layers";
 import { COLORS, FONT } from "./Theme";
 
 type ReceiptOptions = {
@@ -6,25 +7,29 @@ type ReceiptOptions = {
   baseValue: number;
   labels: string[];
   biggest: boolean;
+  lastCall?: boolean;
 };
 
 export class ReceiptLane {
   private readonly container: Phaser.GameObjects.Container;
 
   constructor(private readonly scene: Phaser.Scene, x: number, y: number) {
-    this.container = scene.add.container(x, y).setDepth(460);
+    this.container = scene.add.container(x, y).setDepth(LAYERS.hudJuice);
   }
 
   show(options: ReceiptOptions): void {
     this.container.removeAll(true);
 
     const height = options.labels.length > 0 ? 148 : 92;
-    const panel = this.scene.add.rectangle(0, 0, 244, height, 0xfffaf1, 0.94).setStrokeStyle(3, 0xe5a940);
-    const title = this.scene.add.text(0, -height / 2 + 22, options.biggest ? "BIGGEST CHECKOUT" : "CHECKOUT", {
+    const panel = this.scene.add
+      .rectangle(0, 0, 244, height, options.lastCall ? 0xfff4cf : 0xfffaf1, 0.94)
+      .setStrokeStyle(3, options.lastCall ? 0xc8666f : 0xe5a940);
+    const titleText = options.biggest ? "BIGGEST CHECKOUT" : options.lastCall ? "LAST CALL CHECKOUT" : "CHECKOUT";
+    const title = this.scene.add.text(0, -height / 2 + 22, titleText, {
       fontFamily: FONT,
       fontSize: "14px",
       fontStyle: "700",
-      color: options.biggest ? COLORS.berry : COLORS.coffeeDark,
+      color: options.biggest || options.lastCall ? COLORS.berry : COLORS.coffeeDark,
     }).setOrigin(0.5);
     const amount = this.scene.add.text(0, -height / 2 + 54, `+$${options.amount}`, {
       fontFamily: FONT,

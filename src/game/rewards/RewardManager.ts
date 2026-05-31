@@ -124,10 +124,6 @@ export class RewardManager {
     return level > 0 && Math.random() < rushBellChance(level);
   }
 
-  bonusCustomerMultiplier(): number {
-    return this.getLevel("rush_bell") >= 5 ? 2 : 1;
-  }
-
   shouldAddStampCardBonus(checkouts: number): boolean {
     const level = this.getLevel("stamp_card");
     const every = stampCardEvery(level);

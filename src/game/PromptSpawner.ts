@@ -33,6 +33,10 @@ export class PromptSpawner {
     return this.pickPrompt(stage, otherCustomers);
   }
 
+  reset(): void {
+    this.recentPrompts.length = 0;
+  }
+
   private pickPrompt(category: PromptCategory, activeCustomers: Customer[]): string | null {
     const activeFirstLetters = new Set(
       activeCustomers.map((customer) => customer.prompt[0]?.toLowerCase()).filter(Boolean),

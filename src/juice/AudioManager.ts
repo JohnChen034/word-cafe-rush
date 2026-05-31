@@ -32,6 +32,12 @@ export class AudioManager {
     window.setTimeout(() => this.play(1240, 0.07, "sine", 0.04), 70);
   }
 
+  lastCallRegister(): void {
+    this.play(520, 0.08, "triangle", 0.06);
+    window.setTimeout(() => this.play(860, 0.09, "sine", 0.055), 70);
+    window.setTimeout(() => this.play(1320, 0.1, "sine", 0.05), 150);
+  }
+
   stamp(): void {
     this.play(180, 0.07, "square", 0.06);
   }
@@ -46,9 +52,20 @@ export class AudioManager {
     this.play(980, 0.09, "sine", 0.055);
   }
 
+  maxReward(): void {
+    this.play(620, 0.1, "triangle", 0.06);
+    window.setTimeout(() => this.play(920, 0.12, "triangle", 0.06), 90);
+    window.setTimeout(() => this.play(1280, 0.16, "sine", 0.055), 190);
+  }
+
   lastCall(): void {
     this.play(300, 0.12, "triangle", 0.07);
     window.setTimeout(() => this.play(230, 0.16, "triangle", 0.065), 130);
+  }
+
+  overtime(): void {
+    this.play(1040, 0.06, "square", 0.045);
+    window.setTimeout(() => this.play(1380, 0.07, "sine", 0.04), 55);
   }
 
   private play(frequency: number, duration: number, type: OscillatorType, gainValue: number): void {

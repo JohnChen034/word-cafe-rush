@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { countText, punch } from "../juice/TweenPresets";
+import { LAYERS } from "./Layers";
 import { COLORS, FONT } from "./Theme";
 
 export class MoneyDisplay {
@@ -22,7 +23,7 @@ export class MoneyDisplay {
       color: COLORS.ink,
     }).setOrigin(0.5);
 
-    this.container = scene.add.container(x, y, [plate, icon, this.label]);
+    this.container = scene.add.container(x, y, [plate, icon, this.label]).setDepth(LAYERS.hud);
   }
 
   setValue(value: number, animated = true): void {

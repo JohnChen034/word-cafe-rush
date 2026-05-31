@@ -4,6 +4,7 @@ import { DIFFICULTIES, type DifficultyConfig, type DifficultyId } from "../game/
 import { createRunEconomyStats, type RunEconomyStats } from "../game/economy/RunEconomy";
 import { LastCallManager } from "../game/lastcall/LastCallManager";
 import { PromptSpawner } from "../game/PromptSpawner";
+import { getRewardDefinition } from "../game/rewards/RewardCatalog";
 import { RewardManager } from "../game/rewards/RewardManager";
 import { RushBoxManager } from "../game/rewards/RushBoxManager";
 import type { RewardId } from "../game/rewards/RewardTypes";
@@ -21,6 +22,7 @@ import { floatingMoneyText } from "../ui/FloatingMoneyText";
 import { ComboDisplay } from "../ui/ComboDisplay";
 import { ItemShelfView } from "../ui/ItemShelfView";
 import { LastCallView } from "../ui/LastCallView";
+import { LAYERS } from "../ui/Layers";
 import { MoneyDisplay } from "../ui/MoneyDisplay";
 import { ReceiptLane } from "../ui/ReceiptLane";
 import { RushBoxOverlay } from "../ui/RushBoxOverlay";
@@ -70,8 +72,6 @@ export class GameScene extends Phaser.Scene {
   private inputCooldownUntil = 0;
 
   private timerText!: Phaser.GameObjects.Text;
-  private scoreText!: Phaser.GameObjects.Text;
-  private metricsText!: Phaser.GameObjects.Text;
   private moneyDisplay!: MoneyDisplay;
   private comboDisplay!: ComboDisplay;
   private stampCardView!: StampCardView;
@@ -80,6 +80,7 @@ export class GameScene extends Phaser.Scene {
   private receiptLane!: ReceiptLane;
   private inputText!: Phaser.GameObjects.Text;
   private feedbackText!: Phaser.GameObjects.Text;
+  private rewardToast: Phaser.GameObjects.Container | null = null;
 
   constructor() {
     super("GameScene");
@@ -90,6 +91,7 @@ export class GameScene extends Phaser.Scene {
     this.customers.length = 0;
     this.views.clear();
     this.typing.resetInput();
+    this.spawner.reset();
     Object.assign(this.score, createScoreState());
     this.rewards.reset();
     this.rushBoxes.reset();
@@ -175,16 +177,14 @@ export class GameScene extends Phaser.Scene {
   private createHud(): void {
     this.add.rectangle(480, 54, 860, 64, 0xf1dfc2, 1).setStrokeStyle(2, 0x8a5a3d);
 
-    this.timerText = this.hudText(78, 54, "90s", 30);
+    this.timerText = this.hudText(78, 54, "90s", 30).setDepth(LAYERS.hud) as Phaser.GameObjects.Text;
     this.moneyDisplay = new MoneyDisplay(this, 238, 54);
     this.comboDisplay = new ComboDisplay(this, 420, 54);
-    this.metricsText = this.hudText(600, 54, "WPM 0", 18);
-    this.scoreText = this.hudText(710, 54, "0 pts", 18);
-    this.stampCardView = new StampCardView(this, 210, 104);
+    this.stampCardView = new StampCardView(this, 690, 54);
     this.itemShelfView = new ItemShelfView(this, 830, 428);
     this.itemShelfView.update([]);
     this.lastCallView = new LastCallView(this);
-    this.receiptLane = new ReceiptLane(this, 790, 312);
+    this.receiptLane = new ReceiptLane(this, 798, 302);
 
     this.add.rectangle(480, 604, 370, 34, 0xf1dfc2, 0.84).setStrokeStyle(2, 0x8a5a3d);
     this.inputText = this.add.text(480, 604, "Input: ", {
@@ -193,13 +193,14 @@ export class GameScene extends Phaser.Scene {
       fontStyle: "700",
       color: COLORS.ink,
     }).setOrigin(0.5);
+    this.inputText.setDepth(LAYERS.hud);
 
     this.feedbackText = this.add.text(480, 458, "", {
       fontFamily: FONT,
       fontSize: "22px",
       fontStyle: "700",
       color: COLORS.berry,
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(LAYERS.hudJuice);
   }
 
   private hudText(x: number, y: number, text: string, size: number): Phaser.GameObjects.Text {
@@ -368,44 +369,47 @@ export class GameScene extends Phaser.Scene {
   private createCustomerView(customer: Customer): void {
     const body = this.add
       .rectangle(customer.x, customer.y + 52, 96, 104, this.customerColor(customer.id), 16)
-      .setStrokeStyle(3, 0x5d3927);
+      .setStrokeStyle(3, 0x5d3927)
+      .setDepth(LAYERS.customers);
     const face = this.add.text(customer.x, customer.y + 36, "☕", {
       fontFamily: FONT,
       fontSize: "38px",
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(LAYERS.customers + 1);
     const promptBubble = this.add
       .rectangle(customer.x, customer.y - 52, 178, 54, 0xffffff, 1)
-      .setStrokeStyle(3, 0x8a5a3d);
-    const promptProgressBack = this.add.rectangle(customer.x, customer.y - 27, 142, 6, 0xf1dfc2, 1);
+      .setStrokeStyle(3, 0x8a5a3d)
+      .setDepth(LAYERS.promptBubble);
+    const promptProgressBack = this.add.rectangle(customer.x, customer.y - 27, 142, 6, 0xf1dfc2, 1).setDepth(LAYERS.promptBubble + 1);
     const promptProgressFill = this.add
       .rectangle(customer.x - 71, customer.y - 27, 0, 6, 0xe5a940, 1)
-      .setOrigin(0, 0.5);
+      .setOrigin(0, 0.5)
+      .setDepth(LAYERS.promptBubble + 2);
     const stageText = this.add.text(customer.x - 78, customer.y - 72, "", {
       fontFamily: FONT,
       fontSize: "13px",
       fontStyle: "700",
       color: COLORS.muted,
-    });
+    }).setDepth(LAYERS.promptText);
     const promptText = this.add.text(customer.x, customer.y - 52, "", {
       fontFamily: FONT,
       fontSize: "24px",
       fontStyle: "700",
       color: COLORS.ink,
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(LAYERS.promptText);
     const typedText = this.add.text(customer.x, customer.y - 52, "", {
       fontFamily: FONT,
       fontSize: "24px",
       fontStyle: "700",
       color: COLORS.gold,
-    }).setOrigin(0, 0.5);
+    }).setOrigin(0, 0.5).setDepth(LAYERS.promptText);
     const remainingText = this.add.text(customer.x, customer.y - 52, "", {
       fontFamily: FONT,
       fontSize: "24px",
       fontStyle: "700",
       color: COLORS.ink,
-    }).setOrigin(0, 0.5);
-    const patienceBack = this.add.rectangle(customer.x, customer.y + 128, 118, 12, 0xd8c4a5, 1);
-    const patienceFill = this.add.rectangle(customer.x - 59, customer.y + 128, 118, 12, 0x5ea787, 1).setOrigin(0, 0.5);
+    }).setOrigin(0, 0.5).setDepth(LAYERS.promptText);
+    const patienceBack = this.add.rectangle(customer.x, customer.y + 128, 118, 12, 0xd8c4a5, 1).setDepth(LAYERS.customers);
+    const patienceFill = this.add.rectangle(customer.x - 59, customer.y + 128, 118, 12, 0x5ea787, 1).setOrigin(0, 0.5).setDepth(LAYERS.customers + 1);
 
     this.views.set(customer.id, {
       body,
@@ -460,15 +464,11 @@ export class GameScene extends Phaser.Scene {
 
   private updateHud(): void {
     const remaining = Math.max(0, Math.ceil(this.remainingSeconds()));
-    const elapsedSeconds = Math.max(this.elapsedMs / 1000, 1);
-    const results = calculateResults(this.score, elapsedSeconds);
-
     this.timerText.setColor(this.lastCall.isActive() ? COLORS.berry : COLORS.ink);
+    this.timerText.setScale(this.lastCall.isActive() ? 1.16 : 1);
     this.timerText.setText(`${remaining}s`);
     this.moneyDisplay.setValue(this.score.income);
     this.comboDisplay.setCombo(this.score.combo);
-    this.metricsText.setText(`WPM ${results.wpm}`);
-    this.scoreText.setText(`${this.score.score} pts`);
     this.stampCardView.update(this.rushBoxes.currentStampCount(), this.rushBoxes.currentThreshold());
     this.lastCallView.setOvertime(this.economy.overtimeSecondsEarned);
     this.inputText.setText(`Input: ${this.typing.currentInput}${this.typing.currentInput ? "_" : ""}`);
@@ -555,6 +555,8 @@ export class GameScene extends Phaser.Scene {
 
   private chooseRushBoxReward(id: RewardId): void {
     const nextLevel = this.rewards.addReward(id);
+    const reward = getRewardDefinition(id);
+    const reachedMax = nextLevel >= reward.maxLevel;
     this.rushBoxOverlay?.destroy();
     this.rushBoxOverlay = null;
     this.isOpeningBox = false;
@@ -563,8 +565,9 @@ export class GameScene extends Phaser.Scene {
     this.rewards.refreshComboFoamOnBox(this.elapsedMs);
     this.itemShelfView.update(this.rewards.getOwnedRewards());
     this.itemShelfView.pulse();
-    this.juice.rewardSelected(this.itemShelfView.container);
-    this.showPayoff(`LV ${nextLevel}!`, 480, 454, COLORS.gold);
+    if (reachedMax) this.juice.rewardMaxed(this.itemShelfView.container);
+    else this.juice.rewardSelected(this.itemShelfView.container);
+    this.showRewardLevelUpToast(id, nextLevel, reachedMax);
     this.economy.rushBoxesOpened = this.rushBoxes.openedCount();
     this.ensureCustomerAvailable();
     this.updateHud();
@@ -609,13 +612,29 @@ export class GameScene extends Phaser.Scene {
     this.score.score += checkout.moneyEarned;
     this.economy.biggestCheckout = Math.max(this.economy.biggestCheckout, checkout.moneyEarned);
     const isBiggest = checkout.moneyEarned > previousBiggest && previousBiggest > 0;
-    this.receiptLane.show({
-      amount: checkout.moneyEarned,
-      baseValue,
-      labels: checkout.bonusLabels,
-      biggest: isBiggest,
+    const view = this.views.get(customer.id);
+    this.juice.checkoutAtCustomer(
+      customer.x,
+      customer.y + 44,
+      checkout.moneyEarned,
+      isBiggest,
+      this.lastCall.isActive(),
+      view ? [view.body, view.face] : undefined,
+    );
+    this.time.delayedCall(190, () => {
+      this.moneyDisplay.pulse();
+      this.comboDisplay.pulse();
     });
-    if (checkout.bonusLabels.length > 0) this.itemShelfView.pulse();
+    this.time.delayedCall(240, () => {
+      this.receiptLane.show({
+        amount: checkout.moneyEarned,
+        baseValue,
+        labels: checkout.bonusLabels,
+        biggest: isBiggest,
+        lastCall: this.lastCall.isActive(),
+      });
+      if (checkout.bonusLabels.length > 0) this.itemShelfView.pulse();
+    });
 
     if (this.lastCall.isActive()) {
       this.economy.lastCallCheckouts += 1;
@@ -623,8 +642,8 @@ export class GameScene extends Phaser.Scene {
       this.elapsedMs -= overtime * 1000;
       this.economy.overtimeSecondsEarned += overtime;
       if (overtime > 0) {
-        this.juice.overtime(customer.x, customer.y - 168);
-        this.showPayoff(`+${overtime.toFixed(0)}s`, customer.x, customer.y - 168, COLORS.berry);
+        this.juice.overtime(126, 142);
+        this.showPayoff(`+${overtime.toFixed(0)}s`, 126, 168, COLORS.berry, LAYERS.hudJuice);
       }
     }
 
@@ -636,10 +655,6 @@ export class GameScene extends Phaser.Scene {
     if (this.rewards.shouldSpawnBonusCustomer()) {
       this.spawnCustomer({ bonus: true });
     }
-
-    this.juice.checkout(790, 432, checkout.moneyEarned, this.moneyDisplay.container, this.comboDisplay.container);
-    this.moneyDisplay.pulse();
-    this.comboDisplay.pulse();
     if (isBiggest) {
       this.cameras.main.shake(110, 0.004);
     }
@@ -662,12 +677,15 @@ export class GameScene extends Phaser.Scene {
     const stampPosition = this.stampCardView.playStampGain();
     const filledBox = !hadPendingBox && this.rushBoxes.hasPendingBox();
     this.juice.stamp(stampPosition.x, stampPosition.y, filledBox);
-    if (filledBox) this.stampCardView.playFull();
+    if (filledBox) {
+      this.stampCardView.playFull();
+      this.showPayoff("BOX READY!", stampPosition.x, stampPosition.y - 30, COLORS.gold, LAYERS.hudJuice);
+    }
     this.showPayoff(label, stampPosition.x, stampPosition.y + 30, COLORS.gold);
   }
 
-  private showPayoff(text: string, x: number, y: number, color: string): void {
-    floatingMoneyText(this, x, y, text, color);
+  private showPayoff(text: string, x: number, y: number, color: string, depth: number = LAYERS.floatingPayoff): void {
+    floatingMoneyText(this, x, y, text, color, depth);
   }
 
   private remainingSeconds(): number {
@@ -685,8 +703,54 @@ export class GameScene extends Phaser.Scene {
 
     this.lastComboMilestone = milestone;
     this.cameras.main.flash(120, 229, 169, 64, false);
-    this.showPayoff(`COMBO x${milestone}!`, 480, 424, COLORS.gold);
+    this.showPayoff(`COMBO x${milestone}!`, 480, 424, COLORS.gold, LAYERS.hudJuice);
     this.comboDisplay.pulse();
+  }
+
+  private showRewardLevelUpToast(id: RewardId, level: number, reachedMax: boolean): void {
+    this.rewardToast?.destroy(true);
+
+    const reward = getRewardDefinition(id);
+    const panelColor = reachedMax ? 0xe5a940 : 0xfffaf1;
+    const titleColor = reachedMax ? "#fffaf1" : COLORS.gold;
+    const panel = this.add.rectangle(0, 0, 360, reachedMax ? 112 : 96, panelColor, 0.96).setStrokeStyle(4, 0x8a5a3d);
+    const title = this.add.text(0, reachedMax ? -28 : -22, `${reward.name.toUpperCase()} LV.${level}!`, {
+      fontFamily: FONT,
+      fontSize: "24px",
+      fontStyle: "700",
+      color: titleColor,
+      stroke: reachedMax ? COLORS.coffeeDark : "#fffaf1",
+      strokeThickness: reachedMax ? 5 : 3,
+    }).setOrigin(0.5);
+    const subtitle = this.add.text(0, reachedMax ? 12 : 18, reachedMax ? "MAXED - RUN EVOLVED" : reward.shortDescription(level), {
+      fontFamily: FONT,
+      fontSize: reachedMax ? "18px" : "16px",
+      fontStyle: "700",
+      color: reachedMax ? COLORS.coffeeDark : COLORS.ink,
+      align: "center",
+      wordWrap: { width: 304 },
+    }).setOrigin(0.5);
+
+    this.rewardToast = this.add.container(480, 404, [panel, title, subtitle]).setDepth(LAYERS.hudJuice).setScale(0.86).setAlpha(0);
+    this.tweens.add({
+      targets: this.rewardToast,
+      alpha: 1,
+      scale: 1,
+      duration: 160,
+      ease: "Back.easeOut",
+    });
+    this.tweens.add({
+      targets: this.rewardToast,
+      alpha: 0,
+      y: 378,
+      delay: reachedMax ? 1200 : 900,
+      duration: 260,
+      ease: "Sine.easeIn",
+      onComplete: () => {
+        this.rewardToast?.destroy(true);
+        this.rewardToast = null;
+      },
+    });
   }
 
   private ensureCustomerAvailable(): void {

@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import type { OwnedReward } from "../game/rewards/RewardTypes";
 import { punch } from "../juice/TweenPresets";
+import { LAYERS } from "./Layers";
 import { COLORS, FONT } from "./Theme";
 
 export class ItemShelfView {
@@ -16,7 +17,7 @@ export class ItemShelfView {
       fontStyle: "700",
       color: COLORS.muted,
     });
-    this.container = scene.add.container(x, y, [plate, this.title]).setDepth(120).setVisible(false);
+    this.container = scene.add.container(x, y, [plate, this.title]).setDepth(LAYERS.hud).setVisible(false);
   }
 
   update(rewards: OwnedReward[]): void {

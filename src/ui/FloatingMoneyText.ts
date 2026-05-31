@@ -1,7 +1,15 @@
 import Phaser from "phaser";
+import { LAYERS } from "./Layers";
 import { FONT } from "./Theme";
 
-export function floatingMoneyText(scene: Phaser.Scene, x: number, y: number, text: string, color: string): void {
+export function floatingMoneyText(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  text: string,
+  color: string,
+  depth: number = LAYERS.floatingPayoff,
+): void {
   const label = scene.add.text(x, y, text, {
     fontFamily: FONT,
     fontSize: "22px",
@@ -9,7 +17,7 @@ export function floatingMoneyText(scene: Phaser.Scene, x: number, y: number, tex
     color,
     stroke: "#fffaf1",
     strokeThickness: 4,
-  }).setOrigin(0.5).setDepth(500);
+  }).setOrigin(0.5).setDepth(depth);
 
   label.setScale(0.7);
   scene.tweens.add({

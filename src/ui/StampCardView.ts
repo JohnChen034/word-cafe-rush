@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { punch } from "../juice/TweenPresets";
+import { LAYERS } from "./Layers";
 import { COLORS, FONT } from "./Theme";
 
 type StampSlot = {
@@ -23,7 +24,7 @@ export class StampCardView {
       color: COLORS.coffeeDark,
     }).setOrigin(0, 0.5);
 
-    this.container = scene.add.container(x, y, [card, this.label]);
+    this.container = scene.add.container(x, y, [card, this.label]).setDepth(LAYERS.hud);
     this.rebuildSlots(scene);
   }
 
