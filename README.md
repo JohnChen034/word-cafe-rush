@@ -2,6 +2,8 @@
 
 A browser typing game prototype built with TypeScript, Vite, and Phaser 3.
 
+Play it here: https://johnchen034.github.io/word-cafe-rush/
+
 ## Current Prototype Focus
 
 - Stamp Meter
