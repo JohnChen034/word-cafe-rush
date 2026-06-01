@@ -132,7 +132,15 @@ export class RushBoxOverlay {
           duration: quick ? 90 : 170,
           yoyo: true,
           ease: "Back.easeOut",
-          onComplete: () => options.onChoose(id),
+          onComplete: () => {
+            scene.tweens.add({
+              targets: this.container,
+              alpha: 0,
+              duration: quick ? 90 : 150,
+              ease: "Sine.easeIn",
+              onComplete: () => options.onChoose(id),
+            });
+          },
         });
       };
       card.on("pointerdown", choose);
@@ -158,7 +166,8 @@ export class RushBoxOverlay {
 
   private burst(x: number, y: number): void {
     for (let index = 0; index < 14; index += 1) {
-      const dot = this.scene.add.circle(x, y, Phaser.Math.Between(4, 8), 0xe5a940, 0.9).setDepth(LAYERS.overlay + 1);
+      const dot = this.scene.add.circle(x, y, Phaser.Math.Between(4, 8), 0xe5a940, 0.9);
+      this.container.add(dot);
       const angle = (Math.PI * 2 * index) / 14;
       const distance = Phaser.Math.Between(50, 118);
       this.scene.tweens.add({
@@ -169,7 +178,9 @@ export class RushBoxOverlay {
         scale: 0.2,
         duration: 360,
         ease: "Cubic.easeOut",
-        onComplete: () => dot.destroy(),
+        onComplete: () => {
+          if (dot.scene) dot.destroy();
+        },
       });
     }
   }

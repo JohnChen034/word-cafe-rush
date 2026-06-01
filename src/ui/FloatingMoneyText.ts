@@ -8,7 +8,7 @@ export function floatingMoneyText(
   y: number,
   text: string,
   color: string,
-  depth: number = LAYERS.floatingPayoff,
+  depth: number = LAYERS.gameplayPayoffBehindPrompts,
 ): void {
   const label = scene.add.text(x, y, text, {
     fontFamily: FONT,

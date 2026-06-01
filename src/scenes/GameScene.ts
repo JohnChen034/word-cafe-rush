@@ -33,6 +33,8 @@ type GameData = {
   difficulty?: DifficultyId;
 };
 
+const CHECKOUT_EXIT_MS = 520;
+
 type CustomerView = {
   body: Phaser.GameObjects.Rectangle;
   face: Phaser.GameObjects.Text;
@@ -70,6 +72,7 @@ export class GameScene extends Phaser.Scene {
   private typoGhost = false;
   private lastComboMilestone = 0;
   private inputCooldownUntil = 0;
+  private suppressSpawnsUntil = 0;
 
   private timerText!: Phaser.GameObjects.Text;
   private moneyDisplay!: MoneyDisplay;
@@ -107,6 +110,7 @@ export class GameScene extends Phaser.Scene {
     this.typoGhost = false;
     this.lastComboMilestone = 0;
     this.inputCooldownUntil = 0;
+    this.suppressSpawnsUntil = 0;
     this.currentCustomerPerfect.clear();
   }
 
@@ -137,10 +141,10 @@ export class GameScene extends Phaser.Scene {
     if (this.lastCall.update(remaining)) {
       this.juice.lastCall();
       this.lastCallView.start();
-      this.showPayoff("LAST CALL!", 126, 166, COLORS.berry);
     }
 
     if (
+      this.time.now >= this.suppressSpawnsUntil &&
       this.customers.length < this.currentMaxCustomers() &&
       this.spawnElapsedMs >= this.difficulty.spawnEveryMs * this.lastCall.getSpawnRateMultiplier()
     ) {
@@ -305,12 +309,16 @@ export class GameScene extends Phaser.Scene {
 
     const next = nextStage(customer.stage);
     if (!next) {
-      this.checkoutCustomer(customer, promptWasPerfect);
-      this.removeCustomer(customer.id, true);
+      const checkout = this.checkoutCustomer(customer, promptWasPerfect);
+      this.retireCheckedOutCustomer(customer.id);
       this.typing.resetInput();
       this.activePromptHadTypo = false;
-      this.time.delayedCall(440, () => this.maybeOpenRushBox());
-      this.ensureCustomerAvailable();
+      this.suppressSpawnsUntil = this.time.now + CHECKOUT_EXIT_MS;
+      this.time.delayedCall(CHECKOUT_EXIT_MS, () => {
+        if (checkout.spawnBonusCustomer) this.spawnCustomer({ bonus: true });
+        this.maybeOpenRushBox();
+        this.ensureCustomerAvailable();
+      });
       return;
     }
 
@@ -511,6 +519,42 @@ export class GameScene extends Phaser.Scene {
     if (this.typing.activeTargetId === customerId) this.typing.resetInput();
   }
 
+  private retireCheckedOutCustomer(customerId: number): void {
+    const index = this.customers.findIndex((customer) => customer.id === customerId);
+    if (index === -1) return;
+
+    const view = this.views.get(customerId);
+    this.customers.splice(index, 1);
+    this.currentCustomerPerfect.delete(customerId);
+    if (this.typing.activeTargetId === customerId) this.typing.resetInput();
+
+    if (!view) return;
+
+    view.promptBubble.setVisible(false);
+    view.promptProgressBack.setVisible(false);
+    view.promptProgressFill.setVisible(false);
+    view.promptText.setVisible(false);
+    view.typedText.setVisible(false);
+    view.remainingText.setVisible(false);
+    view.stageText.setVisible(false);
+    view.patienceBack.setVisible(false);
+    view.patienceFill.setVisible(false);
+    view.face.setText("✨");
+
+    this.tweens.add({
+      targets: [view.body, view.face],
+      y: "-=18",
+      alpha: 0,
+      delay: 260,
+      duration: 180,
+      ease: "Sine.easeIn",
+      onComplete: () => {
+        Object.values(view).forEach((item) => item.destroy());
+        this.views.delete(customerId);
+      },
+    });
+  }
+
   private finishShift(): void {
     const results = calculateResults(this.score, this.difficulty.sessionSeconds);
     this.input.keyboard?.removeAllListeners();
@@ -548,7 +592,7 @@ export class GameScene extends Phaser.Scene {
     this.rushBoxOverlay = new RushBoxOverlay(this, options, {
       levelFor: (id) => this.rewards.getLevel(id),
       onChoose: (id) => this.chooseRushBoxReward(id),
-      quick: this.rushBoxes.openedCount() >= 2 || this.rushBoxes.pendingCount() > 1,
+      quick: this.rushBoxes.openedCount() >= 2,
     });
     this.updateHud();
   }
@@ -592,7 +636,7 @@ export class GameScene extends Phaser.Scene {
     if (combo.money > 0) this.addCashBonus(combo.money, customer.x, customer.y - 142, combo.labels[0] ?? "combo");
   }
 
-  private checkoutCustomer(customer: Customer, promptWasPerfect: boolean): void {
+  private checkoutCustomer(customer: Customer, promptWasPerfect: boolean): { spawnBonusCustomer: boolean } {
     const customerPerfect = this.currentCustomerPerfect.get(customer.id) ?? promptWasPerfect;
     const baseValue = 30 + Math.min(this.score.combo * 2, 40);
     const checkout = this.rewards.applyCheckoutBonuses(
@@ -643,7 +687,7 @@ export class GameScene extends Phaser.Scene {
       this.economy.overtimeSecondsEarned += overtime;
       if (overtime > 0) {
         this.juice.overtime(126, 142);
-        this.showPayoff(`+${overtime.toFixed(0)}s`, 126, 168, COLORS.berry, LAYERS.hudJuice);
+        this.showPayoff(`+${overtime.toFixed(0)}s`, 126, 168, COLORS.berry, LAYERS.hudPayoff);
       }
     }
 
@@ -652,12 +696,11 @@ export class GameScene extends Phaser.Scene {
       this.addStamps(1, customer.x, customer.y - 190, "+1 stamp card");
     }
 
-    if (this.rewards.shouldSpawnBonusCustomer()) {
-      this.spawnCustomer({ bonus: true });
-    }
+    const spawnBonusCustomer = this.rewards.shouldSpawnBonusCustomer();
     if (isBiggest) {
       this.cameras.main.shake(110, 0.004);
     }
+    return { spawnBonusCustomer };
   }
 
   private addCashBonus(amount: number, x: number, y: number, label: string): void {
@@ -665,7 +708,7 @@ export class GameScene extends Phaser.Scene {
     this.score.score += amount;
     this.moneyDisplay.setValue(this.score.income);
     this.moneyDisplay.pulse();
-    this.showPayoff(`${label} +$${amount}`, x, y, COLORS.gold);
+    this.showPayoff(`${label} +$${amount}`, x, y, COLORS.gold, LAYERS.gameplayPayoffBehindPrompts);
   }
 
   private addStamps(amount: number, x: number, y: number, label: string): void {
@@ -679,12 +722,12 @@ export class GameScene extends Phaser.Scene {
     this.juice.stamp(stampPosition.x, stampPosition.y, filledBox);
     if (filledBox) {
       this.stampCardView.playFull();
-      this.showPayoff("BOX READY!", stampPosition.x, stampPosition.y - 30, COLORS.gold, LAYERS.hudJuice);
+      this.showPayoff("BOX READY!", stampPosition.x, stampPosition.y - 30, COLORS.gold, LAYERS.hudPayoff);
     }
-    this.showPayoff(label, stampPosition.x, stampPosition.y + 30, COLORS.gold);
+    this.showPayoff(label, stampPosition.x, stampPosition.y + 30, COLORS.gold, LAYERS.hudPayoff);
   }
 
-  private showPayoff(text: string, x: number, y: number, color: string, depth: number = LAYERS.floatingPayoff): void {
+  private showPayoff(text: string, x: number, y: number, color: string, depth: number = LAYERS.gameplayPayoffBehindPrompts): void {
     floatingMoneyText(this, x, y, text, color, depth);
   }
 
@@ -703,7 +746,7 @@ export class GameScene extends Phaser.Scene {
 
     this.lastComboMilestone = milestone;
     this.cameras.main.flash(120, 229, 169, 64, false);
-    this.showPayoff(`COMBO x${milestone}!`, 480, 424, COLORS.gold, LAYERS.hudJuice);
+    this.showPayoff(`COMBO x${milestone}!`, 480, 424, COLORS.gold, LAYERS.hudPayoff);
     this.comboDisplay.pulse();
   }
 

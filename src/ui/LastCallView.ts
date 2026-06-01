@@ -42,7 +42,8 @@ export class LastCallView {
   }
 
   start(): void {
-    this.edge.setStrokeStyle(7, 0xc8666f, 0.7);
+    this.edge.setAlpha(1);
+    this.edge.setStrokeStyle(7, 0xc8666f, 0.78);
     this.banner.setAlpha(1).setScale(0.8);
     this.banner.scene.tweens.add({
       targets: this.banner,
@@ -66,7 +67,7 @@ export class LastCallView {
     });
     this.banner.scene.tweens.add({
       targets: this.edge,
-      alpha: 0.45,
+      alpha: 0.62,
       yoyo: true,
       repeat: -1,
       duration: 520,

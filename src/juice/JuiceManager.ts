@@ -55,7 +55,7 @@ export class JuiceManager {
     this.particles.coinBurst(x, y, Math.min(32, 10 + Math.ceil(amount / 16)), LAYERS.gameplayJuiceBehindPrompts);
     this.particles.ring(x, y, isBiggest ? 0xc8666f : 0xe5a940, isBiggest ? 58 : 42, LAYERS.gameplayJuiceBehindPrompts);
     this.particles.sparkleBurst(x, y, isBiggest ? 14 : 8, LAYERS.gameplayJuiceBehindPrompts);
-    floatingMoneyText(this.scene, x, y - 58, `+$${amount}`, color, LAYERS.gameplayJuiceBehindPrompts);
+    floatingMoneyText(this.scene, x, y - 58, `+$${amount}`, color, LAYERS.gameplayPayoffBehindPrompts);
     if (target) punch(this.scene, target, scale, isBiggest ? 190 : 145);
   }
 
@@ -87,7 +87,6 @@ export class JuiceManager {
 
   lastCall(): void {
     this.audio.lastCall();
-    this.scene.cameras.main.flash(150, 200, 102, 111, false);
   }
 
   overtime(x: number, y: number): void {
